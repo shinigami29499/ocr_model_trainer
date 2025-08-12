@@ -39,17 +39,18 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
     # Convert to grayscale
     image = image.convert("L")
 
-    # Get aspect ratio
+    # Get original width and height
     w, h = image.size
-    new_w = int(TARGET_HEIGHT * w / h)
-    new_w = min(new_w, TARGET_WIDTH)  # Avoid overflow
 
-    # Resize while keeping aspect ratio
-    image = TF.resize(image, (TARGET_HEIGHT, new_w))
+    # No resize — keep original size
 
-    # Pad to target width
-    pad_width = TARGET_WIDTH - new_w
-    image = TF.pad(image, (0, 0, pad_width, 0), fill=255)  # white padding
+    # If width < TARGET_WIDTH, pad right side; else crop or keep as is
+    pad_width = max(0, TARGET_WIDTH - w)
+    image = TF.pad(image, (0, 0, pad_width, 0), fill=255)  # white padding on right
+
+    # Optionally, if width > TARGET_WIDTH, crop to TARGET_WIDTH
+    if image.width > TARGET_WIDTH:
+        image = image.crop((0, 0, TARGET_WIDTH, image.height))
 
     # To tensor & normalize [-1, 1]
     transform = T.Compose([

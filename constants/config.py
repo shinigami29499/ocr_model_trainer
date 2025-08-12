@@ -49,7 +49,7 @@ NUM_CLASSES: int = len(CHARSET) + 1 # +1 for CTC blank token
 DEVICE         = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE     = 32
 NUM_EPOCHS     = 50000
-LR_SCHEDULE    = [1e-2, 1e-3, 1e-4]
+LR_SCHEDULE    = [1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
 SAVE_EVERY     = 1
 
 EARLY_STOPPING_PATIENCE = 10
@@ -62,8 +62,8 @@ PREDICT_DIR    = "data/predict"
 MODEL_PATH          = "checkpoints/crnn_curr.pth"
 BEST_MODEL_PATH     = "checkpoints/crnn_best.pth"
 
-TARGET_HEIGHT = 32
-TARGET_WIDTH  = 200
+TARGET_HEIGHT = 80
+TARGET_WIDTH  = 400
 
 LOAD_CHECKPOINT = False
 

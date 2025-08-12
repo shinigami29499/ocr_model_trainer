@@ -1,10 +1,8 @@
-import concurrent.futures
 import os
 import random
 import shutil
 from typing import List
 
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
@@ -23,7 +21,7 @@ def load_fonts(fonts_dir: str) -> List[ImageFont.FreeTypeFont]:
         if file.lower().endswith((".ttf", ".otf")):
             try:
                 font_path = os.path.join(fonts_dir, file)
-                fonts.append(ImageFont.truetype(font_path, 22))  # Fixed font size
+                fonts.append(ImageFont.truetype(font_path, 40))  # Fixed font size
             except Exception as e:
                 print(f"❌ Failed to load font {file}: {e}")
     return fonts
@@ -36,26 +34,34 @@ def render_text_image(
     text: str,
     font: ImageFont.FreeTypeFont
 ) -> Image.Image:
+    from PIL import Image, ImageDraw
+
+def render_text_image(text: str, font) -> Image.Image:
     """
-    Render text in the exact center of a fixed-size image without cropping.
+    Render text centered on a fixed-size white canvas,
+    then crop tightly around the text to remove extra whitespace.
     """
-    # Step 1: Create the image
+    # Step 1: Create fixed-size white image
     img = Image.new("RGB", (TARGET_WIDTH, TARGET_HEIGHT), "white")
     draw = ImageDraw.Draw(img)
 
-    # Step 2: Get text bounding box
+    # Step 2: Get text bounding box at origin
     bbox = draw.textbbox((0, 0), text, font=font)
     text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
 
-    # Step 3: Calculate centered position
+    # Step 3: Calculate centered horizontal position (x)
     x = (TARGET_WIDTH - text_w) // 2
-    y = (TARGET_HEIGHT - text_h) // 2
+    y = 0  # Keep full height
 
-    # Step 4: Draw text
-    draw.text((x, y), text, font=font, fill="black")
+    # Step 4: Draw text at centered position horizontally, top aligned vertically
+    draw.text((x, (TARGET_HEIGHT - (bbox[3] - bbox[1])) // 2), text, font=font, fill="black")
 
-    return img
+    # Step 5: Crop horizontally tightly, keep full height
+    crop_box = (x, 0, x + text_w, TARGET_HEIGHT)
+    cropped_img = img.crop(crop_box)
+
+    return cropped_img
+
 
 
 def generate_dataset(
@@ -99,24 +105,10 @@ def generate_dataset(
             for font in ([None] if is_predict_data else fonts)
         ]
 
-    # Generate images
+    # Generate images WITHOUT any augmentation
     for i, sample in enumerate(tqdm(data, desc=f"📦 Generating {output_dir}")):
         image = render_text_image(sample["text"], sample["font"])
-        # Augment image: random rotation, blur, noise
-        import random
 
-        from PIL import ImageFilter
-        if random.random() < 0.5:
-            angle = random.uniform(-5, 5)
-            image = image.rotate(angle, expand=1, fillcolor=255)
-        if random.random() < 0.3:
-            image = image.filter(ImageFilter.GaussianBlur(radius=random.uniform(0, 1.5)))
-        if random.random() < 0.3:
-            import numpy as np
-            arr = np.array(image)
-            noise = np.random.normal(0, 10, arr.shape).astype(np.int16)
-            arr = np.clip(arr + noise, 0, 255).astype(np.uint8)
-            image = Image.fromarray(arr)
         filename = f"{i:06}.png"
         image.save(os.path.join(images_dir, filename))
         labels.append(f"{filename}\t{sample['text']}")
@@ -126,7 +118,6 @@ def generate_dataset(
         f.write("\n".join(labels))
 
     print(f"✅ Generated {len(data)} samples in {output_dir}")
-
 
 
 # ------------------------------

@@ -1,4 +1,5 @@
 import os
+from tracemalloc import start
 from typing import List, Union
 
 import torch
@@ -92,18 +93,8 @@ def validate(
         all_gts.extend(gt_texts)
 
     avg_loss = running_loss / len(loader)
-    total_chars = sum(len(gt) for gt in all_gts)
-    correct_chars = sum(
-        sum(p == g for p, g in zip(pred, gt)) for pred, gt in zip(all_preds, all_gts)
-    )
-    char_acc = correct_chars / total_chars if total_chars > 0 else 0.0
-    word_acc = (
-        sum(p == g for p, g in zip(all_preds, all_gts)) / len(all_gts) if all_gts else 0.0
-    )
 
     print(f"🔸 Loss: {avg_loss:.4f}")
-    print(f"🎯 Char Accuracy: {char_acc:.2%}")
-    print(f"📝 Word Accuracy: {word_acc:.2%}")
 
     return avg_loss
 
@@ -167,20 +158,21 @@ def main() -> None:
 
     patience_counter = 0
     try:
-        for epoch in range(start_epoch, NUM_EPOCHS):
-            print(f"🧠 Epoch {epoch+1}:")
+        c_epoch = start_epoch
+        while (True):
+            print(f"🧠 Epoch {c_epoch+1}: (LR: " + str(optimizer.param_groups[0]['lr']) + ")")
             print("-" * 40)
 
             train(model, train_loader, criterion, optimizer)
 
             # --- Validation ---
-            if (epoch + 1) % VAL_CHECK_INTERVAL == 0:
+            if (c_epoch + 1) % VAL_CHECK_INTERVAL == 0:
                 val_loss = validate(model, val_loader, criterion, decode_fn=ctc_decode)
 
                 # --- Early stopping ---
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
-                    best_epoch = epoch
+                    best_epoch = c_epoch
                     patience_counter = 0
                     torch.save(model.state_dict(), BEST_MODEL_PATH)
                     print(f"💾 Best model updated")
@@ -202,8 +194,11 @@ def main() -> None:
             torch.save({
                 "model": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
-                "epoch": epoch
+                "epoch": c_epoch
             }, MODEL_PATH)
+
+            # Update index
+            c_epoch += 1
 
             print()
 
