@@ -1,8 +1,5 @@
 from typing import List, Tuple
 
-# ------------------------------
-# 🧼 Image Preprocessing Function
-# ------------------------------
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
@@ -10,6 +7,19 @@ import torchvision.transforms.functional as TF
 from PIL import Image
 
 from constants.config import *
+
+
+# ------------------------------
+# 🔤 Text Encoding Utilities
+# ------------------------------
+def text_to_labels(text: str) -> List[int]:
+    """Convert text string to list of character indices."""
+    return [CHAR_TO_INDEX[c] for c in text if c in CHAR_TO_INDEX]
+
+
+def labels_to_text(label: List[int]) -> str:
+    """Convert list of character indices to text string (skip CTC blank)."""
+    return ''.join([INDEX_TO_CHAR.get(i, '') for i in label if i != 0])
 
 
 # ------------------------------
